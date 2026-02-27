@@ -111,18 +111,21 @@ h1 {
 /* New: container for letter boxes and speak button */
 .typing-area {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
     gap: 16px;
     margin-bottom: 20px;
+}
+
+.word-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
     flex-wrap: wrap;
 }
 
 .letter-boxes {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
+    width: 100%;
 }
 
 .letter-box {
