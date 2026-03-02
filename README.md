@@ -72,4 +72,4 @@ translation: 中文释义（建议带词性，如“n. 例子”）
 tip: 提示信息（简短说明，将显示在单词下方）
 
 ## 📄 开源协议
-本项目基于 MIT 协议开源，欢迎使用、修改和分享。注明出处：ayun50@msn.com
+本项目基于 MIT 协议开源，欢迎使用、修改和分享。注明出处：Jimmy Wu, https://github.com/Ayun50, ayun50@msn.com
