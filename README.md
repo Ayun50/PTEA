@@ -1,10 +1,10 @@
 # PTE-A 高频单词听写练习
 
-一个专门为PTE考生设计的单词听写练习工具，帮助减少因拼写错误导致的失分。无需注册，完全免费，开箱即用。
+一个专门为PTE考生设计的学术类高频单词听写练习工具，帮助减少因拼写错误导致的失分。无需注册，完全免费，开箱即用。
 
 ## 🎯 设计初衷
 
-作为一名PTE老师，我常在给学生复盘模考时发现，很多人在听力部分因拼写错误丢分。现在很多练习平台这类功能都开始收费了，于是我设计了这款App来帮助我的学生练习听写。今天也把它分享给所有有需要的考生和老师。
+作为一名PTE老师，我常发现这类学术词汇在PTE-A里非常高频出现，于是我设计了这款App来帮助我的学生练习听说读写。今天也把它分享给所有有需要的考生和老师。
 
 ## ✨ 主要功能
 
@@ -54,8 +54,7 @@
 
 编辑 `words.json` 文件，格式如下：
 
-```json
-{
+
   "主题名称1": [
     { "word": "example", "translation": "n. 例子", "tip": "a thing characteristic of its kind" },
     { "word": "another word", "translation": "adj. 另一个的", "tip": "used to refer to an additional person or thing" }
@@ -63,7 +62,6 @@
   "主题名称2": [
     { "word": "country", "translation": "n. 国家", "tip": "a nation with its own government" }
   ]
-}
 
 每个单词对象包含：
 
