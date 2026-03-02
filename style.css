@@ -176,6 +176,20 @@ h1 {
     flex-wrap: wrap;
 }
 
+.footer {
+    text-align: right;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    padding-top: 10px;
+    border-top: 1px solid #ecf0f1;
+}
+
+.footer span {
+    font-weight: bold;
+    color: #2980b9; 
+}
+
 .action-btn {
     padding: 14px 32px;
     background: #2ecc71;
@@ -338,3 +352,4 @@ h1 {
         padding: 10px 20px;
     }
 }
+
