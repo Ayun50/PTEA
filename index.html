@@ -1,24 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes"
+    >
+    <meta
+        name="description"
+        content="PTE Academic 高频词汇听写与拼写练习工具"
+    >
     <title>PTE-A Vocabulary Practice</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="https://www.pearsonpte.com.cn/favicon.ico">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>PTE-A高频单词听写练习</h1>
-            <div class="stats">
+
+            <div class="stats" aria-label="练习统计">
                 <span>已练: <span id="total-attempts">0</span></span>
                 <span>正确: <span id="correct-count">0</span></span>
                 <span>正确率: <span id="accuracy">0</span>%</span>
             </div>
         </header>
 
-        <!-- NEW: Word count and timer display -->
         <div class="info-bar">
             <span>词汇总数: <span id="word-count">0</span></span>
             <span>计时: <span id="timer-display">00:00</span></span>
@@ -26,38 +32,74 @@
 
         <main>
             <div class="theme-selector">
+                <label for="theme" class="visually-hidden">选择词汇列表</label>
                 <select id="theme">
                     <option value="" disabled selected>-- 选择词汇列表 --</option>
                 </select>
             </div>
 
-            <div class="word-card">
-                <!-- Typing area: letter boxes + speak button -->
+            <section class="word-card" aria-label="单词听写练习">
                 <div class="typing-area">
-                    <div id="letter-boxes" class="letter-boxes"></div>
-                    <button id="speak-btn" class="speak-btn">🔊</button>
+                    <div
+                        id="letter-boxes"
+                        class="letter-boxes"
+                        aria-label="拼写输入区域"
+                    ></div>
+
+                    <button
+                        id="speak-btn"
+                        class="speak-btn"
+                        type="button"
+                        aria-label="朗读当前单词"
+                        title="朗读当前单词"
+                        disabled
+                    >🔊</button>
                 </div>
 
-                <!-- Hidden input that captures typing -->
-                <input type="text" id="hidden-input" class="hidden-input" autocomplete="off" inputmode="text">
+                <input
+                    type="text"
+                    id="hidden-input"
+                    class="hidden-input"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    inputmode="text"
+                    aria-label="输入听到的单词"
+                    disabled
+                >
 
                 <div class="button-group">
-                    <button id="action-btn" class="action-btn">Check</button>
-                    <button id="show-answer-btn" class="show-answer-btn">Answer</button>
+                    <button
+                        id="action-btn"
+                        class="action-btn"
+                        type="button"
+                        disabled
+                    >Check</button>
+
+                    <button
+                        id="show-answer-btn"
+                        class="show-answer-btn"
+                        type="button"
+                        disabled
+                    >Answer</button>
                 </div>
 
-                <div id="message" class="message"></div>
+                <div
+                    id="message"
+                    class="message"
+                    role="status"
+                    aria-live="polite"
+                ></div>
                 <div id="translation" class="translation"></div>
                 <div id="tip" class="tip"></div>
-            </div>
+            </section>
         </main>
+
         <footer class="footer">
-            <p>Designed & Developed By <span>Jimmy Wu</span> © 2026</p>
+            <p>Designed &amp; Developed By <span>Jimmy Wu</span> © 2026</p>
         </footer>
     </div>
 
     <script src="script.js"></script>
 </body>
 </html>
-
-

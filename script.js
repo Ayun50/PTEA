@@ -1,93 +1,542 @@
-// Global variables
+"use strict";
+
+const MAX_CHARACTERS_PER_LINE = 16;
+
 let allWords = [];
 let filteredWords = [];
 let currentWordIndex = 0;
 let currentWordObject = null;
+let currentTheme = "";
 let correctFirstAttempt = 0;
 let totalAttempted = 0;
 let hasAttemptedCurrent = false;
 let answeredCorrectly = false;
-let currentTheme = 'all';
-let mode = 'check';  
+let mode = "check";
 let timerInterval = null;
 let timerSeconds = 0;
 let timerRunning = false;
-let hasTypedInCurrentList = false; 
-let firstWordLength = 0;
-let secondWordLength = 0;
+let hasTypedInCurrentList = false;
 
-// DOM elements
-const themeSelect = document.getElementById('theme');
-const letterBoxesDiv = document.getElementById('letter-boxes');
-const hiddenInput = document.getElementById('hidden-input');
-const speakBtn = document.getElementById('speak-btn');
-const actionBtn = document.getElementById('action-btn');
-const messageDiv = document.getElementById('message');
-const translationDiv = document.getElementById('translation');
-const tipDiv = document.getElementById('tip');
-const correctSpan = document.getElementById('correct-count');
-const totalSpan = document.getElementById('total-attempts');
-const accuracySpan = document.getElementById('accuracy');
-const showAnswerBtn = document.getElementById('show-answer-btn');
-const wordCountSpan = document.getElementById('word-count');
-const timerDisplay = document.getElementById('timer-display');
+const themeSelect = document.getElementById("theme");
+const letterBoxesDiv = document.getElementById("letter-boxes");
+const hiddenInput = document.getElementById("hidden-input");
+const speakBtn = document.getElementById("speak-btn");
+const actionBtn = document.getElementById("action-btn");
+const messageDiv = document.getElementById("message");
+const translationDiv = document.getElementById("translation");
+const tipDiv = document.getElementById("tip");
+const correctSpan = document.getElementById("correct-count");
+const totalSpan = document.getElementById("total-attempts");
+const accuracySpan = document.getElementById("accuracy");
+const showAnswerBtn = document.getElementById("show-answer-btn");
+const wordCountSpan = document.getElementById("word-count");
+const timerDisplay = document.getElementById("timer-display");
 
-// --- Event Listeners (set once) ---
+init();
 
-// Click on letter boxes focuses hidden input (if enabled)
-letterBoxesDiv.addEventListener('click', () => {
+async function init() {
+    setInteractiveState(false);
+
+    try {
+        const response = await fetch("words.json", { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        allWords = validateVocabulary(data);
+        populateThemes(data);
+        clearWordDisplay();
+
+        if (!allWords.length) {
+            setMessage("词库中没有有效词汇。", "error");
+        }
+    } catch (error) {
+        console.error("Error loading vocabulary:", error);
+        clearWordDisplay();
+        setMessage(
+            "词库加载失败。请确认 words.json 与网页文件在同一目录，并通过本地服务器打开。",
+            "error"
+        );
+    }
+}
+
+function validateVocabulary(data) {
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("words.json 的顶层必须是主题对象");
+    }
+
+    const normalized = [];
+
+    Object.entries(data).forEach(([theme, entries]) => {
+        if (!Array.isArray(entries)) {
+            console.warn(`已跳过无效主题：${theme}`);
+            return;
+        }
+
+        entries.forEach((item, index) => {
+            if (!item || typeof item.word !== "string" || !item.word.trim()) {
+                console.warn(`已跳过无效词条：${theme}[${index}]`);
+                return;
+            }
+
+            const word = normalizeSpaces(item.word);
+            const variants = Array.isArray(item.variants)
+                ? item.variants
+                : [word];
+
+            const cleanVariants = [...new Set(
+                [word, ...variants]
+                    .filter(value => typeof value === "string" && value.trim())
+                    .map(normalizeSpaces)
+            )];
+
+            const inferredCaseSensitive = /[A-Z]/.test(word);
+            const caseSensitive = item.caseSensitive === true
+                || (item.caseSensitive !== false && inferredCaseSensitive);
+
+            normalized.push({
+                word,
+                translation: typeof item.translation === "string"
+                    ? item.translation.trim()
+                    : "",
+                tip: typeof item.tip === "string" ? item.tip.trim() : "",
+                theme,
+                caseSensitive,
+                variants: cleanVariants
+            });
+        });
+    });
+
+    return normalized;
+}
+
+function normalizeSpaces(value) {
+    return value.trim().replace(/\s+/g, " ");
+}
+
+function populateThemes(data) {
+    themeSelect.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.textContent = "-- 选择词汇列表 --";
+    themeSelect.appendChild(placeholder);
+
+    const validThemes = Object.keys(data).filter(theme =>
+        allWords.some(item => item.theme === theme)
+    );
+
+    if (validThemes.length > 1) {
+        const allOption = document.createElement("option");
+        allOption.value = "all";
+        allOption.textContent = "全部词汇";
+        themeSelect.appendChild(allOption);
+    }
+
+    validThemes.forEach(theme => {
+        const option = document.createElement("option");
+        option.value = theme;
+        option.textContent = theme;
+        themeSelect.appendChild(option);
+    });
+}
+
+themeSelect.addEventListener("change", event => {
+    const selectedTheme = event.target.value;
+    if (!selectedTheme) {
+        clearWordDisplay();
+        resetStats();
+        resetTimer();
+        return;
+    }
+
+    filterWordsByTheme(selectedTheme);
+});
+
+letterBoxesDiv.addEventListener("click", () => {
     if (!hiddenInput.disabled) {
         hiddenInput.focus();
     }
 });
 
-// FIX: Added console log and cancel() to speak button
-speakBtn.addEventListener('click', () => {
-    console.log('Speak button clicked');
-    if (speakBtn.disabled) {
-        console.log('Button is disabled – not speaking');
-        return;
-    }
-    if (currentWordObject) {
+speakBtn.addEventListener("click", () => {
+    if (!speakBtn.disabled && currentWordObject) {
         speakWord(currentWordObject.word);
-    } else {
-        console.log('No current word');
     }
 });
-// Load words from JSON
-fetch('words.json')
-    .then(response => response.json())
-    .then(data => {
-        allWords = [];
-        Object.keys(data).forEach(theme => {
-            data[theme].forEach(wordObj => {
-                allWords.push({
-                    word: wordObj.word,
-                    translation: wordObj.translation,
-                    tip: wordObj.tip,
-                    theme: theme
-                });
-            });
-        });
-        populateThemes();
-        // Set default to placeholder (blank)
-        themeSelect.value = '';
+
+actionBtn.addEventListener("click", () => {
+    if (mode === "check") {
+        checkAnswer();
+    } else if (mode === "next") {
+        goToNextWord();
+    } else if (mode === "restart") {
+        restartCurrentTheme();
+    }
+});
+
+showAnswerBtn.addEventListener("click", revealAnswer);
+
+hiddenInput.addEventListener("input", () => {
+    if (!currentWordObject) return;
+
+    let value = hiddenInput.value;
+    let pattern = selectDisplayVariant(value);
+
+    value = insertExpectedSpaces(value, pattern);
+
+    const maximumLength = Math.max(
+        ...getVariants().map(variant => variant.length),
+        1
+    );
+
+    if (value.length > maximumLength) {
+        value = value.slice(0, maximumLength);
+    }
+
+    if (hiddenInput.value !== value) {
+        hiddenInput.value = value;
+    }
+
+    pattern = selectDisplayVariant(value);
+    renderLetterBoxes(pattern, value);
+
+    if (!hasTypedInCurrentList && value.length > 0 && filteredWords.length) {
+        hasTypedInCurrentList = true;
+        startTimer();
+    }
+});
+
+hiddenInput.addEventListener("keydown", event => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+
+    if (mode === "check" && !answeredCorrectly) {
+        checkAnswer();
+    } else if (mode === "next") {
+        goToNextWord();
+    } else if (mode === "restart") {
+        restartCurrentTheme();
+    }
+});
+
+function filterWordsByTheme(theme) {
+    currentTheme = theme;
+    filteredWords = theme === "all"
+        ? [...allWords]
+        : allWords.filter(item => item.theme === theme);
+
+    shuffleArray(filteredWords);
+    resetStats();
+    resetTimer();
+    currentWordIndex = 0;
+    updateWordCount();
+
+    if (filteredWords.length) {
+        loadWord(0);
+    } else {
         clearWordDisplay();
-    })
-    .catch(error => {
-        console.error('Error loading words:', error);
-        messageDiv.textContent = 'Failed to load vocabulary. Please refresh.';
-        messageDiv.classList.add('error');
+        setMessage("这个词库目前没有有效词汇。", "error");
+    }
+}
+
+function loadWord(index) {
+    currentWordObject = filteredWords[index] || null;
+    if (!currentWordObject) return;
+
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
+
+    hasAttemptedCurrent = false;
+    answeredCorrectly = false;
+    mode = "check";
+
+    hiddenInput.value = "";
+    hiddenInput.disabled = false;
+    actionBtn.disabled = false;
+    actionBtn.textContent = "Check";
+    showAnswerBtn.disabled = false;
+    speakBtn.disabled = false;
+
+    translationDiv.textContent = "";
+    setMessage("");
+    updateTip();
+    renderLetterBoxes(currentWordObject.word, "");
+
+    hiddenInput.focus();
+    speakWord(currentWordObject.word);
+}
+
+function updateTip() {
+    if (!currentWordObject) {
+        tipDiv.textContent = "";
+        return;
+    }
+
+    const parts = [];
+
+    if (currentWordObject.caseSensitive) {
+        parts.push("⚠️ 注意：此答案区分大小写。");
+    }
+
+    if (currentWordObject.tip) {
+        parts.push(`💡 Tip: ${currentWordObject.tip}`);
+    }
+
+    tipDiv.textContent = parts.join(" ");
+}
+
+function getVariants() {
+    if (!currentWordObject) return [];
+    return currentWordObject.variants?.length
+        ? currentWordObject.variants
+        : [currentWordObject.word];
+}
+
+function selectDisplayVariant(input) {
+    const variants = getVariants();
+    if (!variants.length) return "";
+
+    const normalizedInput = currentWordObject.caseSensitive
+        ? input
+        : input.toLocaleLowerCase("en");
+
+    const prefixMatch = variants.find(variant => {
+        const candidate = currentWordObject.caseSensitive
+            ? variant
+            : variant.toLocaleLowerCase("en");
+        return candidate.startsWith(normalizedInput);
     });
 
-function populateThemes() {
-    const themes = new Set(allWords.map(w => w.theme));
-    themes.forEach(theme => {
-        const option = document.createElement('option');
-        option.value = theme;
-        option.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
-        themeSelect.appendChild(option);
+    if (prefixMatch) return prefixMatch;
+
+    return variants.find(variant => variant.length === input.length)
+        || currentWordObject.word;
+}
+
+function insertExpectedSpaces(value, pattern) {
+    let formatted = value;
+
+    for (let index = 0; index < pattern.length; index += 1) {
+        if (pattern[index] !== " ") continue;
+        if (formatted.length <= index) continue;
+
+        if (formatted[index] !== " ") {
+            formatted = `${formatted.slice(0, index)} ${formatted.slice(index)}`;
+        }
+    }
+
+    return formatted;
+}
+
+function getDisplayRows(pattern) {
+    if (!pattern.includes(" ") || pattern.length <= MAX_CHARACTERS_PER_LINE) {
+        return [{ text: pattern, startIndex: 0 }];
+    }
+
+    const words = pattern.split(" ");
+    const rows = [];
+    let startIndex = 0;
+
+    words.forEach(word => {
+        rows.push({ text: word, startIndex });
+        startIndex += word.length + 1;
     });
+
+    return rows;
+}
+
+function renderLetterBoxes(pattern, value) {
+    letterBoxesDiv.innerHTML = "";
+
+    const rows = getDisplayRows(pattern);
+
+    rows.forEach(({ text, startIndex }) => {
+        const row = document.createElement("div");
+        row.className = "word-row";
+
+        if (text.length >= 13) {
+            row.classList.add("long-row");
+        }
+
+        [...text].forEach((character, localIndex) => {
+            const patternIndex = startIndex + localIndex;
+            const box = document.createElement("span");
+            box.className = "letter-box";
+
+            if (character === " ") {
+                box.dataset.space = "true";
+                box.textContent = value[patternIndex] === " "
+                    || !value[patternIndex]
+                    ? "·"
+                    : value[patternIndex];
+            } else {
+                box.textContent = value[patternIndex] || "";
+            }
+
+            row.appendChild(box);
+        });
+
+        letterBoxesDiv.appendChild(row);
+    });
+}
+
+function checkAnswer() {
+    if (!currentWordObject || mode !== "check" || answeredCorrectly) return;
+
+    const userAnswer = hiddenInput.value.trim();
+    const firstAttempt = !hasAttemptedCurrent;
+
+    if (firstAttempt) {
+        totalAttempted += 1;
+        hasAttemptedCurrent = true;
+    }
+
+    const variants = getVariants();
+    const validLengths = [...new Set(variants.map(variant => variant.length))];
+
+    if (!validLengths.includes(userAnswer.length)) {
+        const lengthText = validLengths.length === 1
+            ? `${validLengths[0]} 个字符`
+            : `${validLengths.join(" 或 ")} 个字符`;
+
+        setMessage(`请完整输入 ${lengthText}`, "error");
+        updateStats();
+        hiddenInput.focus();
+        return;
+    }
+
+    const matches = variants.some(variant =>
+        currentWordObject.caseSensitive
+            ? userAnswer === variant
+            : userAnswer.toLocaleLowerCase("en")
+                === variant.toLocaleLowerCase("en")
+    );
+
+    if (matches) {
+        if (firstAttempt) {
+            correctFirstAttempt += 1;
+        }
+
+        answeredCorrectly = true;
+        translationDiv.textContent = currentWordObject.translation;
+        setMessage("✅ 正确！", "success");
+
+        mode = "next";
+        actionBtn.textContent = currentWordIndex === filteredWords.length - 1
+            ? "完成"
+            : "下一个";
+
+        hiddenInput.disabled = true;
+        showAnswerBtn.disabled = true;
+        actionBtn.focus();
+    } else {
+        setMessage("❌ 错误，再试一次", "error");
+        hiddenInput.value = "";
+        renderLetterBoxes(currentWordObject.word, "");
+        hiddenInput.focus();
+    }
+
+    updateStats();
+}
+
+function revealAnswer() {
+    if (!currentWordObject || showAnswerBtn.disabled) return;
+
+    hiddenInput.value = currentWordObject.word;
+    renderLetterBoxes(currentWordObject.word, currentWordObject.word);
+    translationDiv.textContent = currentWordObject.translation;
+    updateTip();
+    setMessage(`答案：${getVariants().join(" / ")}`, "success");
+
+    answeredCorrectly = true;
+    mode = "next";
+    hiddenInput.disabled = true;
+    showAnswerBtn.disabled = true;
+    actionBtn.textContent = currentWordIndex === filteredWords.length - 1
+        ? "完成"
+        : "下一个";
+    actionBtn.focus();
+}
+
+function goToNextWord() {
+    if (!filteredWords.length) return;
+
+    if (currentWordIndex >= filteredWords.length - 1) {
+        finishSession();
+        return;
+    }
+
+    currentWordIndex += 1;
+    loadWord(currentWordIndex);
+}
+
+function finishSession() {
+    stopTimer();
+
+    mode = "restart";
+    hiddenInput.disabled = true;
+    speakBtn.disabled = true;
+    showAnswerBtn.disabled = true;
+    actionBtn.disabled = false;
+    actionBtn.textContent = "重新练习";
+
+    setMessage(
+        `🎉 本轮完成！共 ${filteredWords.length} 个词，用时 ${timerDisplay.textContent}。`,
+        "success"
+    );
+}
+
+function restartCurrentTheme() {
+    if (!filteredWords.length || !currentTheme) return;
+
+    shuffleArray(filteredWords);
+    resetStats();
+    resetTimer();
+    currentWordIndex = 0;
+    loadWord(0);
+}
+
+function clearWordDisplay() {
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
+
+    currentWordObject = null;
+    filteredWords = [];
+    currentWordIndex = 0;
+    currentTheme = "";
+    mode = "check";
+
+    letterBoxesDiv.innerHTML = "";
+    hiddenInput.value = "";
+    translationDiv.textContent = "";
+    tipDiv.textContent = "";
+    setMessage("");
+    wordCountSpan.textContent = "0";
+
+    setInteractiveState(false);
+}
+
+function setInteractiveState(enabled) {
+    actionBtn.disabled = !enabled;
+    showAnswerBtn.disabled = !enabled;
+    speakBtn.disabled = !enabled;
+    hiddenInput.disabled = !enabled;
+}
+
+function setMessage(text, type = "") {
+    messageDiv.textContent = text;
+    messageDiv.classList.remove("error", "success");
+
+    if (type) {
+        messageDiv.classList.add(type);
+    }
 }
 
 function resetStats() {
@@ -96,21 +545,37 @@ function resetStats() {
     updateStats();
 }
 
-// Timer functions
+function updateStats() {
+    correctSpan.textContent = String(correctFirstAttempt);
+    totalSpan.textContent = String(totalAttempted);
+
+    const accuracy = totalAttempted
+        ? Math.round(correctFirstAttempt / totalAttempted * 100)
+        : 0;
+
+    accuracySpan.textContent = String(accuracy);
+}
+
+function updateWordCount() {
+    wordCountSpan.textContent = String(filteredWords.length);
+}
+
 function startTimer() {
     if (timerRunning) return;
+
     timerRunning = true;
-    timerInterval = setInterval(() => {
-        timerSeconds++;
+    timerInterval = window.setInterval(() => {
+        timerSeconds += 1;
         updateTimerDisplay();
     }, 1000);
 }
 
 function stopTimer() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
+    if (timerInterval !== null) {
+        window.clearInterval(timerInterval);
     }
+
+    timerInterval = null;
     timerRunning = false;
 }
 
@@ -124,323 +589,45 @@ function resetTimer() {
 function updateTimerDisplay() {
     const minutes = Math.floor(timerSeconds / 60);
     const seconds = timerSeconds % 60;
-    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+    timerDisplay.textContent =
+        `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-// Update word count display
-function updateWordCount() {
-    wordCountSpan.textContent = filteredWords.length;
-}
-
-// Function to clear all word-related UI and disable controls
-function clearWordDisplay() {
-    letterBoxesDiv.innerHTML = '';
-    tipDiv.textContent = '';
-    translationDiv.textContent = '';
-    messageDiv.textContent = '';
-    messageDiv.classList.remove('error', 'success');
-    actionBtn.disabled = true;
-    speakBtn.disabled = true;
-    hiddenInput.disabled = true;
-    hiddenInput.value = '';
-    firstWordLength = 0;
-    secondWordLength = 0;
-}
-
-// FIX: Added shuffle function
 function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+    for (let index = array.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [array[index], array[randomIndex]] =
+            [array[randomIndex], array[index]];
     }
+
     return array;
 }
 
-// Modified filterWordsByTheme
-function filterWordsByTheme(theme) {
-    if (theme === 'all') {
-        filteredWords = [...allWords];
-    } else {
-        filteredWords = allWords.filter(w => w.theme === theme);
-    }
-    // Shuffle the filtered words so they appear in random order
-    shuffleArray(filteredWords);
-    resetStats();                     // reset counters on theme change
-    resetTimer();                      // reset timer when theme changes
-    updateWordCount();                 // update word count display
-    
-    currentWordIndex = 0;
-    if (filteredWords.length > 0) {
-        loadWord(currentWordIndex);
-    } else {
-        clearWordDisplay();
-    }
-}
-
-function loadWord(index) {
-    if (filteredWords.length === 0) return;
-    currentWordObject = filteredWords[index];
-
-    // Create letter boxes for the new word
-    createLetterBoxes(currentWordObject.word);  // pass the whole word
-
-    // Update tip, clear messages
-    tipDiv.textContent = `💡 Tip: ${currentWordObject.tip}`;
-    translationDiv.textContent = '';
-    messageDiv.textContent = '';
-    messageDiv.classList.remove('error', 'success');
-
-    // Reset state
-    hasAttemptedCurrent = false;
-    answeredCorrectly = false;
-    mode = 'check';
-    actionBtn.textContent = 'Check';
-    actionBtn.disabled = false;
-    speakBtn.disabled = false;
-    hiddenInput.value = '';
-    hiddenInput.disabled = false;
-    hiddenInput.focus();
-
-    // Reset typing flag for first word only
-    if (index === 0) {
-        hasTypedInCurrentList = false;
-    }
-
-    // Auto-speak the new word
-    speakWord(currentWordObject.word);
-}
-
-function createLetterBoxes(word) {
-    letterBoxesDiv.innerHTML = '';
-    const words = word.split(' ');
-    
-    // Decide layout: if two words and total length > 13, split into two rows
-    if (words.length === 2 && word.length > 13) {
-        firstWordLength = words[0].length;
-        secondWordLength = words[1].length;
-        
-        // First row (first word)
-        const row1 = document.createElement('div');
-        row1.className = 'word-row';
-        for (let i = 0; i < firstWordLength; i++) {
-            const box = document.createElement('span');
-            box.className = 'letter-box';
-            row1.appendChild(box);
-        }
-        letterBoxesDiv.appendChild(row1);
-        
-        // Second row (second word)
-        const row2 = document.createElement('div');
-        row2.className = 'word-row';
-        for (let i = 0; i < secondWordLength; i++) {
-            const box = document.createElement('span');
-            box.className = 'letter-box';
-            row2.appendChild(box);
-        }
-        letterBoxesDiv.appendChild(row2);
-    } else {
-        // Single word or short phrase – one row, including space(s)
-        firstWordLength = word.length;
-        secondWordLength = 0;
-        const row = document.createElement('div');
-        row.className = 'word-row';
-        for (let i = 0; i < word.length; i++) {
-            const box = document.createElement('span');
-            box.className = 'letter-box';
-            // Mark space positions for visual dot (only for single‑row mode)
-            if (word[i] === ' ') {
-                box.dataset.space = 'true';
-            }
-            row.appendChild(box);
-        }
-        letterBoxesDiv.appendChild(row);
-    }
-}
-
-// Update letter boxes based on hidden input value
-function updateLetterBoxes() {
-    if (!currentWordObject) return;
-    const value = hiddenInput.value;
-    const boxes = document.querySelectorAll('.letter-box');
-    
-    // Calculate maximum allowed length (including one space if split)
-    const maxLength = firstWordLength + secondWordLength + (secondWordLength > 0 ? 1 : 0);
-    if (value.length > maxLength) {
-        hiddenInput.value = value.slice(0, maxLength);
-    }
-    
-    // Clear all boxes
-    boxes.forEach(box => box.textContent = '');
-    
-    let boxIndex = 0;
-    for (let i = 0; i < hiddenInput.value.length; i++) {
-        const char = hiddenInput.value[i];
-        
-        // If split layout and this is the space position, skip assigning to a box
-        if (secondWordLength > 0 && i === firstWordLength) {
-            continue;
-        }
-        
-        if (boxIndex < boxes.length) {
-            const box = boxes[boxIndex];
-            // If this box corresponds to a space in single‑row mode, show a dot
-            if (box.dataset.space === 'true') {
-                box.textContent = char === ' ' ? '·' : char;
-            } else {
-                box.textContent = char;
-            }
-            boxIndex++;
-        }
-    }
-    
-    // For single‑row mode: fill remaining empty space‑boxes with a dot placeholder
-    if (secondWordLength === 0) {
-        boxes.forEach((box, idx) => {
-            if (box.dataset.space === 'true' && box.textContent === '') {
-                box.textContent = '·';
-            }
-        });
-    }
-}
-
-hiddenInput.addEventListener('input', (e) => {
-    updateLetterBoxes();
-    
-    // Start timer on first keystroke of the list
-    if (!hasTypedInCurrentList && filteredWords.length > 0 && currentWordIndex === 0) {
-        hasTypedInCurrentList = true;
-        startTimer();
-    }
-});
-
-// Enter key in hidden input triggers check (only in check mode)
-hiddenInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && mode === 'check' && !answeredCorrectly) {
-        e.preventDefault();
-        checkAnswer();
-    }
-});
-
-// Action button: Check or Next
-actionBtn.addEventListener('click', () => {
-    if (mode === 'check') {
-        checkAnswer();
-    } else {
-        goToNextWord();
-    }
-});
-
-function checkAnswer() {
-    if (!currentWordObject || mode !== 'check' || answeredCorrectly) return;
-
-    const isFirstAttempt = !hasAttemptedCurrent;
-    if (isFirstAttempt) {
-        totalAttempted++;          // count this word once
-        hasAttemptedCurrent = true; // mark first attempt done
-    }
-
-    const userAnswer = hiddenInput.value.trim().toLowerCase();
-    const correctWord = currentWordObject.word.toLowerCase();
-
-    // Calculate expected total characters (including the one space if two rows)
-    const expectedLength = firstWordLength + secondWordLength + (secondWordLength > 0 ? 1 : 0);
-
-    // Length mismatch – still counted as an attempt, show error and return
-    if (userAnswer.length !== expectedLength) {
-        messageDiv.textContent = `请完整输入 ${expectedLength} 个字符`;
-        messageDiv.classList.add('error');
-        updateStats();
-        hiddenInput.focus();
-        return;
-    }
-
-    if (userAnswer === correctWord) {
-        // Correct!
-        if (isFirstAttempt) {
-            correctFirstAttempt++;      // only first correct counts
-        }
-        answeredCorrectly = true;
-        messageDiv.textContent = '✅ 正确！';
-        messageDiv.classList.add('success');
-        translationDiv.textContent = currentWordObject.translation;
-
-        // Switch to next mode
-        mode = 'next';
-        actionBtn.textContent = '下一个';
-        hiddenInput.disabled = true;
-        actionBtn.focus();
-    } else {
-        // Wrong answer
-        messageDiv.textContent = '❌ 错误，再试一次';
-        messageDiv.classList.add('error');
-        hiddenInput.value = '';
-        updateLetterBoxes();
-        hiddenInput.focus();
-    }
-    updateStats();
-}
-
-function goToNextWord() {
-    if (filteredWords.length === 0) return;
-    currentWordIndex = (currentWordIndex + 1) % filteredWords.length;
-    loadWord(currentWordIndex);
-}
-
-function updateStats() {
-    correctSpan.textContent = correctFirstAttempt;
-    totalSpan.textContent = totalAttempted;
-    const accuracy = totalAttempted > 0 ? Math.round((correctFirstAttempt / totalAttempted) * 100) : 0;
-    accuracySpan.textContent = accuracy;
-}
-
-// FIX: Added cancel() to avoid speech queue issues
 function speakWord(word) {
-    window.speechSynthesis.cancel(); // stop any ongoing speech
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = 'en-US';
-    window.speechSynthesis.speak(utterance);
-}
-
-function revealAnswer() {
-    if (!currentWordObject || answeredCorrectly) return; // already correct, but we can still show
-
-    // Fill the hidden input with the correct word
-    hiddenInput.value = currentWordObject.word;
-    updateLetterBoxes();
-
-    // Show translation
-    translationDiv.textContent = currentWordObject.translation;
-
-    // Show a message
-    messageDiv.textContent = 'Answer revealed. Moving to next word.';
-    messageDiv.classList.add('success');
-
-    // Switch to next mode without counting stats
-    answeredCorrectly = true;      // prevent further checking
-    mode = 'next';
-    actionBtn.textContent = 'Next Word';
-    hiddenInput.disabled = true;
-    actionBtn.focus();
-
-    // Do NOT update stats (no attempt counted)
-}
-
-// Theme change
-themeSelect.addEventListener('change', (e) => {
-    const selected = e.target.value;
-    if (selected === '') {
-        // Placeholder selected – do nothing, keep blank
-        clearWordDisplay();
-        resetStats();
+    if (!("speechSynthesis" in window)
+        || typeof SpeechSynthesisUtterance === "undefined") {
+        speakBtn.disabled = true;
+        speakBtn.title = "当前浏览器不支持语音朗读";
         return;
     }
-    currentTheme = selected;
-    filterWordsByTheme(selected);
-});
 
-// Guard in case button is missing (though it's present)
-if (showAnswerBtn) {
-    showAnswerBtn.addEventListener('click', revealAnswer);
-} else {
-    console.warn('Show answer button not found');
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = "en-US";
+    utterance.rate = 0.85;
+
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice =>
+        voice.lang.toLocaleLowerCase("en").startsWith("en-us")
+    ) || voices.find(voice =>
+        voice.lang.toLocaleLowerCase("en").startsWith("en")
+    );
+
+    if (preferredVoice) {
+        utterance.voice = preferredVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
 }
