@@ -1,75 +1,60 @@
-# PTE-A 高频单词听写练习
+# 🎧 PTE-A 高频词汇听写练习 | PTE-A Vocabulary Dictation
 
-一个专门为PTE考生设计的学术类高频单词听写练习工具，帮助减少因拼写错误导致的失分。无需注册，完全免费，开箱即用。
+🌐 A free, browser-based vocabulary dictation tool designed for PTE-A learners.
 
-## 🎯 设计初衷
+一个专为 PTE-A 考生设计的免费在线词汇听写练习工具，帮助学生提高学术词汇的听辨、拼写和记忆能力，减少因拼写错误造成的失分。
 
-作为一名PTE老师，我常发现这类学术词汇在PTE-A里非常高频出现，于是我设计了这款App来帮助我的学生练习听说读写。今天也把它分享给所有有需要的考生和老师。
+## 👨‍🏫 About the Creator | 关于作者
 
-## ✨ 主要功能
+I am an English educator with extensive experience teaching IELTS, PTE, and academic English.
 
-- **主题词库选择** – 下拉列表可从不同主题词库（如“学术高频词”、“国家和地区”）中选题，支持自由切换。
-- **智能拼写框**
-  - 字母下方自动显示下划线，提示单词长度。
-  - 支持多词词组（如“education system”），长词组自动换行显示。
-  - 空格键可直接跳转到下一个单词输入（通过隐藏输入框实现）。
-- **发音辅助** – 每次加载单词自动朗读，点击喇叭图标可重复播放。
-- **实时反馈**
-  - 正确/错误即时提示，正确后显示中文释义。
-  - “显示答案”按钮可直接揭示正确答案（不统计准确率）。
-- **学习统计**
-  - 记录已练单词数、正确数、正确率（仅首次作答计入）。
-  - 单词总数显示，计时器从第一次键入开始计时。
-- **多设备适配** – 完美支持手机、平板、笔记本电脑到27英寸大屏幕。
-- **词库自由扩展** – 只需编辑 `words.json` 即可添加任意主题和单词。
+我是一名英语教育工作者，长期从事 IELTS、PTE 及学术英语教学。
 
-## 🛠️ 技术栈
+Through teaching, I noticed that many students could recognize academic vocabulary when reading but struggled to identify and spell the same words when hearing them. I designed this tool to provide focused and repeatable practice for this specific problem.
 
-- **HTML5 / CSS3** – 响应式布局，适配所有设备。
-- **原生 JavaScript** – 无任何框架依赖。
-- **Web Speech API** – 浏览器内置语音合成。
-- **JSON** – 灵活的词库存储格式。
+在教学过程中，我发现很多学生阅读时能够认识学术词汇，但听到这些词时却难以准确辨认和拼写。因此，我设计了这个工具，为学生提供针对性的重复练习。
 
-## 📁 项目结构
-.
-├── index.html # 主页面
-├── style.css # 样式文件（包含多端适配）
-├── script.js # 核心逻辑
-├── words.json # 词库文件（按主题分类）
-└── README.md # 本文件
+## 🎯 Key Features | 主要功能
 
+- 🎧 **Dictation Practice** — Listen and type the word you hear
+- 🔊 **Pronunciation Support** — Automatic text-to-speech with replay
+- ⌨️ **Smart Spelling** — Word-length hints and multi-word phrase support
+- ⚡ **Instant Feedback** — Immediate correction and Chinese meaning
+- 📊 **Learning Statistics** — Practice count, accuracy and time tracking
+- 📚 **Topic Vocabulary** — Switch between different vocabulary sets
+- 📱 **Responsive Design** — Works on phones, tablets and computers
+- 🧩 **Expandable** — Add new vocabulary easily through `words.json`
 
-## ⚙️ 如何使用
+## 🚀 How to Use | 如何使用
 
-1. 打开 `index.html` 或访问部署后的网址。
-2. 从下拉列表中选择一个词库主题。
-3. 根据字母框提示输入单词，按回车键或点击 **Check** 检查答案。
-4. 正确后按钮变为 **下一个**，按回车或点击继续。
-5. 中途可点击 **Answer** 显示正确答案（不计入统计）。
-6. 统计信息（已练、正确、正确率、计时）实时更新。
+1. Choose a vocabulary topic. https://ayun50.github.io/PTEA/
+2. Listen to the word and type what you hear.
+3. Click **Check** or press **Enter**.
+4. Review the feedback and continue with **Next**.
+5. Use **Answer** when you need help.
 
-> 计时从第一次键入开始，切换主题或刷新页面会重置计时。
+选择词库 → 听单词 → 输入拼写 → 检查答案 → 查看反馈 → 继续练习。
 
-## 📝 自定义词库
+## 🛠️ Technology | 技术栈
 
-编辑 `words.json` 文件，格式如下：
+- HTML5 / CSS3
+- Vanilla JavaScript
+- Web Speech API
+- JSON
 
+## 🌱 Educational Purpose | 教育理念
 
-  "主题名称1": [
-    { "word": "example", "translation": "n. 例子", "tip": "a thing characteristic of its kind" },
-    { "word": "another word", "translation": "adj. 另一个的", "tip": "used to refer to an additional person or thing" }
-  ],
-  "主题名称2": [
-    { "word": "country", "translation": "n. 国家", "tip": "a nation with its own government" }
-  ]
+> **When students struggle with a learning task, we can either ask them to practice harder — or redesign how they practice.**
 
-每个单词对象包含：
+> **当学生在学习中遇到困难时，我们可以要求他们“更加努力”，也可以思考如何重新设计他们的学习方式。**
 
-word: 英文单词（支持带空格的词组）
+This project was created from a real classroom problem and reflects my interest in learner-centered educational technology.
 
-translation: 中文释义（建议带词性，如“n. 例子”）
+这个项目源于真实的课堂问题，也体现了我对**以学习者为中心的教育技术**的探索。
 
-tip: 提示信息（简短说明，将显示在单词下方）
+## 📄 License | 开源协议
 
-## 📄 开源协议
-本项目基于 MIT 协议开源，欢迎使用、修改和分享。注明出处：Jimmy Wu, https://github.com/Ayun50, ayun50@msn.com
+MIT License
+
+**Created by Jimmy Wu**  
+GitHub: https://github.com/Ayun50  
